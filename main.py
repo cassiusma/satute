@@ -7,6 +7,7 @@ import csv
 import os
 import scipy
 import scipy.linalg
+import subprocess
 
 def remove_filename(path):
     parts = path.split('/')
@@ -448,7 +449,6 @@ def subsequences(T, path,epsilon,number_rates,option):
                 writer.write(lines[i])
 
     df = pd.read_csv(pathFolder+"prob.csv",sep='\t',engine='python')
-
     site_rate =[]
     length = len(df.index)
     for i in range(length):
@@ -456,11 +456,10 @@ def subsequences(T, path,epsilon,number_rates,option):
         for j in range(number_rates):
             probs.append(df.iloc[i][j+1])
         max_value = max(probs)
-        if max_value < 0.25+epsilon:
+        if max_value < 1/number_rates+epsilon:
             site_rate.append(0)
         else:
             site_rate.append(probs.index(max_value)+1)
-
     numbersitesperrate = []
     for j in range(number_rates):
         numbersitesperrate.append(site_rate.count(j+1))
@@ -475,6 +474,7 @@ def subsequences(T, path,epsilon,number_rates,option):
                 fseq.write(l[0:l.find(" ")] + " " + str(site_rate.count(i+1)) + "\n")
                 for j in range(1, len(lines)):
                     line = lines[j]
+                    print(line)
                     fseq.write(line.split(" ",1)[0])
                     seq = line.split(" ",1)[1]
                     for k in range(len(seq)):
@@ -482,9 +482,14 @@ def subsequences(T, path,epsilon,number_rates,option):
                             index = k
                             break
                     seq = seq[index:-1]
+                    #cassius
                     fseq.write((k+1)*" ")
                     for k in range(len(site_rate)):
                         if (site_rate[k]==i+1):
+                            #print(len(site_rate))
+                            #print(len(seq))
+                            #print(k)
+                            #print(seq[k])
                             fseq.write(seq[k])
                     fseq.write("\n")
     elif option==2:
@@ -998,12 +1003,16 @@ def diagonalisation(n,path):
     return array_eigenvectors,multiplicity
 
 
-def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
+
+def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
     """IQ-TREE"""
+    if runIQTREE:
+        if runBOOTSRAP:
+            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", "GTR+G"+str(number_rates)+"+I", "-asr", "-wspr", "-seed", "10", "-quiet", "-b", "100"])
+        else:
+            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", "GTR+G"+str(number_rates)+"+I", "-asr", "-wspr", "-seed", "10", "-quiet"])
 
-    #sub.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", "GTR+G+I", "-asr", "-wspr", "-seed", "10", "-quiet"])
-
-    """Check type if the alingment is Phylip or fasta format"""
+    """Check type if the alignment is Phylip or fasta format"""
 
     option = 1 #If sequence file has phylip format
     # Check if otherwise we assume fasta file:
@@ -1033,9 +1042,11 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
 
     clades1,clades2 =  clades(T,t,newickformat,internal_nodes,leaves)
     save_clades(pathDATA,number_rates,clades1,clades2,newickformat,rates)
-
-    sequences_clades(pathDATA,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes, numbersitesperrate)
-
+    if number_rates> 1:
+        sequences_clades(pathDATA,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes, numbersitesperrate)
+    else:
+        #does not work!!! REVISAR
+        sequences_clades(pathDATA,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes, [])
     state_frequencies_vect =  rate_and_frequenciesALTERNATIVE(pathDATA,number_rates, dimension)
 
     array_eigenvectors,multiplicity =  diagonalisation(dimension,pathDATA)
@@ -1044,6 +1055,7 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
 
     """BASH SCRIPT BEFORE TEST"""
     pathNEWFOLDER  = pathFOLDER+"subsequences/subseq"+chosen_rate+"/clades/*"
+    print(pathNEWFOLDER)
 
     with open(pathFOLDER+"subsequences/subseq"+chosen_rate+"/model.txt", "r") as toModel:
         modelAndFrequency = toModel.readline().strip('\n')
@@ -1094,7 +1106,7 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
             if i==0:
                 T = Tree(t,format=newickformat)
 
-                results_file = open(pathFOLDER + "results.txt", "w") #To store test results. We open file in first iteration (branch).
+                results_file = open(pathFOLDER +"/resultsRate"+chosen_rate+".txt", "w") #To store test results. We open file in first iteration (branch).
                 results_file.write(T.copy("newick").get_ascii(attributes=["name","label","distance"]))
                 results_file.write("\n")
                 results_file.write('{:6s}  {:6s}  {:6s}  {:14s} {:14s} {:100s}'.format("Order"," delta"," c_s"," Branch status ", "T2T status", "Branch","\n"))
@@ -1124,7 +1136,7 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
 
             if i==0:
                 T = Tree(t,format=newickformat)
-                results_file = open(pathFOLDER + "subsequences/subseq" + chosen_rate + "/results.txt", "w") #To store test results.  We open file in first iteration (branch).
+                results_file = open(pathFOLDER + "/resultsRate"+chosen_rate+".txt", "w") #To store test results.  We open file in first iteration (branch).
                 results_file.write("\n\n\n")
                 results_file.write('{:6s}  {:6s}  {:6s}  {:14s} {:14s} {:100s}\n'.format("Order"," delta"," c_s","Branch status","T2T status"," Branch"))
         estimation_dt = np.sqrt(U*min(K,U/4)/number_sites)
@@ -1140,11 +1152,12 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
             for k in range(number_sites*(number_nodes_1-1),number_sites*number_nodes_1):
                 a.append(v1@np.asarray(df1.iloc[k,3:7]))
 
+
             for k in range(number_sites*(number_nodes_2-1),number_sites*number_nodes_2):
                 b.append(v1@np.asarray(df2.iloc[k,3:7]))
 
             delta = np.asarray(a)@np.asarray(b)/number_sites #computing the dominant sample coherence
-
+            #print(np.multiply(a, b))
             if i<len(internal_nodes):
                 M_a = np.asarray(a)@np.asarray(a)/number_sites+upper_ci
             else: #if clade A is a single leaf
@@ -1168,6 +1181,7 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
 
                 for k in range(number_sites*(number_nodes_1-1),number_sites*number_nodes_1):
                     a.append(v1@np.asarray(df1.iloc[k,3:7]))
+
 
                 for k in range(number_sites*(number_nodes_2-1),number_sites*number_nodes_2):
                     b.append(v1@np.asarray(df2.iloc[k,3:7]))
@@ -1227,21 +1241,26 @@ def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen
 
 
 
-
 if __name__ == '__main__':
     print("Hello! If you give me an alignment, I can check how saturated it is.\n"
           "I will divide the alignment into four regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma4 model.\n"
           "Then I will consider the fastest evolving region.\n"
           "For this region, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
-    pathDATA = input("What is the path to the alignment?\n")
-    pathDATA = "/Users/cassius/Desktop/ejemploAnimales/example.phy"
-    pathIQTREE = input("What is the path to IQ-TREE?\n")
+    #pathDATA = input("What is the path to the alignment?\n")
+    pathDATA = "/Users/cassius/Desktop/SIV_all_without_satute/civ.phy"
+    #pathIQTREE = input("What is the path to IQ-TREE?\n")
     pathIQTREE = "/Users/cassius/Desktop/iqtree2"
-    #saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
-
-    saturationTest(pathDATA, pathIQTREE)
+    numberRates = 8
+    saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(8), 2.33, 1, 0.01)
+    for i in range(numberRates):
+        if i==0:
+            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(i+1), 2.33, 1, 0.01)
+        else:
+            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(i+1), 2.33, 1, 0.01)
+    #saturationTest(pathDATA, pathIQTREE, False)
+    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
     t,T =  read_tree(pathDATA,1)
-    print("\n\nFor better reference, this is the reconstructed tree topology :\n",T.copy("newick").get_ascii(attributes=["name","label","distance"]))
+    print(t)
+    #print("\n\nFor better reference, this is the reconstructed tree topology :\n",T.copy("newick").get_ascii(attributes=["name","label","distance"]))
 
-# Press the green button in the gutter to run the script.
 
