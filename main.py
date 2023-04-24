@@ -465,7 +465,7 @@ def subsequences(T, path,epsilon,number_rates,option):
         numbersitesperrate.append(site_rate.count(j+1))
 
     if option==1:
-        for i in range(number_rates+1):
+        for i in range(number_rates):
             os.makedirs(pathFolder + "subsequences/subseq" + str(i+1), exist_ok=True)
             fseq = open(pathFolder + "subsequences/subseq" + str(i+1) + "/sequence.txt", "w+")
             with open(filesequence, 'r+') as f:
@@ -474,7 +474,6 @@ def subsequences(T, path,epsilon,number_rates,option):
                 fseq.write(l[0:l.find(" ")] + " " + str(site_rate.count(i+1)) + "\n")
                 for j in range(1, len(lines)):
                     line = lines[j]
-                    print(line)
                     fseq.write(line.split(" ",1)[0])
                     seq = line.split(" ",1)[1]
                     for k in range(len(seq)):
@@ -486,10 +485,6 @@ def subsequences(T, path,epsilon,number_rates,option):
                     fseq.write((k+1)*" ")
                     for k in range(len(site_rate)):
                         if (site_rate[k]==i+1):
-                            #print(len(site_rate))
-                            #print(len(seq))
-                            #print(k)
-                            #print(seq[k])
                             fseq.write(seq[k])
                     fseq.write("\n")
     elif option==2:
@@ -902,7 +897,7 @@ def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
         state_frequencies_vect.append(float(words))
     pathFolder = remove_filename(path)
     if number_rates==1:
-        f1 = open(pathFolder + "clades/model.txt", "w")
+        f1 = open(pathFolder + "model.txt", "w")
         f1.write(modelAndFrequency)
     else:
         for i in range(number_rates):
@@ -928,7 +923,7 @@ def rate_and_frequencies(path,number_rates, dimension):
                 state_frequencies_vect = [0.25,0.25,0.25,0.25]
     pathFolder = remove_filename(path)
     if number_rates==1:
-        f1 = open(pathFolder + "clades/model.txt", "w")
+        f1 = open(pathFolder + "model.txt", "w")
         f1.write("'GTR" + G + "+FU" + F + "'")
     else:
         for i in range(number_rates):
@@ -1004,13 +999,22 @@ def diagonalisation(n,path):
 
 
 
-def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
+def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = False):
     """IQ-TREE"""
     if runIQTREE:
+        modelRatesInv = "GTR+G"+str(number_rates)+"+I"
+        modelHomo = "GTR"
         if runBOOTSRAP:
-            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", "GTR+G"+str(number_rates)+"+I", "-asr", "-wspr", "-seed", "10", "-quiet", "-b", "100"])
+            if number_rates>1:
+                subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelRatesInv, "-asr", "-wspr", "-seed", "10", "-quiet", "-b", "100"])
+            else:
+                subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelHomo, "-asr", "-seed", "10", "-quiet", "-b", "100"])
+
         else:
-            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", "GTR+G"+str(number_rates)+"+I", "-asr", "-wspr", "-seed", "10", "-quiet"])
+            if number_rates>1:
+                subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelRatesInv, "-asr", "-wspr", "-seed", "10", "-quiet"])
+            else:
+                subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelHomo, "-asr", "-seed", "10", "-quiet"])
 
     """Check type if the alignment is Phylip or fasta format"""
 
@@ -1023,7 +1027,7 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
             if not word.isnumeric():
                 option = 2 #Since the first line is not only numbers, we assume it is a fasta file
 
-        """PATHS"""
+    """PATHS"""
     pathFOLDER = remove_filename(pathDATA)
     "MAIN"
     t,T =  read_tree(pathDATA,newickformat)
@@ -1045,7 +1049,6 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
     if number_rates> 1:
         sequences_clades(pathDATA,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes, numbersitesperrate)
     else:
-        #does not work!!! REVISAR
         sequences_clades(pathDATA,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes, [])
     state_frequencies_vect =  rate_and_frequenciesALTERNATIVE(pathDATA,number_rates, dimension)
 
@@ -1054,26 +1057,36 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
 
 
     """BASH SCRIPT BEFORE TEST"""
-    pathNEWFOLDER  = pathFOLDER+"subsequences/subseq"+chosen_rate+"/clades/*"
-    print(pathNEWFOLDER)
+    if (number_rates>1):
+        pathNEWFOLDER  = pathFOLDER+"subsequences/subseq"+chosen_rate+"/clades/*"
 
-    with open(pathFOLDER+"subsequences/subseq"+chosen_rate+"/model.txt", "r") as toModel:
-        modelAndFrequency = toModel.readline().strip('\n')
-    script = """
-            for d in """ + pathNEWFOLDER + """; do
-                cd "$d"
-                """ +pathIQTREE +  """ -s sequence.txt -te tree.txt -m \"'\"""" + modelAndFrequency+ """\"'\" -asr -blfix -o FOO -pre output -redo -quiet
-            done   
-            """
+        with open(pathFOLDER+"subsequences/subseq"+chosen_rate+"/model.txt", "r") as toModel:
+            modelAndFrequency = toModel.readline().strip('\n')
+        script = """
+                for d in """ + pathNEWFOLDER + """; do
+                    cd "$d"
+                    """ +pathIQTREE +  """ -s sequence.txt -te tree.txt -m \"'\"""" + modelAndFrequency+ """\"'\" -asr -blfix -o FOO -pre output -redo -quiet
+                done   
+                """
+    else:
+        pathNEWFOLDER  = pathFOLDER+"clades/*"
+        with open(pathFOLDER+"model.txt", "r") as toModel:
+            modelAndFrequency = toModel.readline().strip('\n')
+        script = """
+                for d in """ + pathNEWFOLDER + """; do
+                    cd "$d"
+                    """ +pathIQTREE +  """ -s sequence.txt -te tree.txt -m \"'\"""" + modelAndFrequency+ """\"'\" -asr -blfix -o FOO -pre output -redo -quiet
+                done"""
+                
     os.system("bash -c '%s'" % script)
 
 
 
-    """ SATURATION TEST FOR ALL BRANCHES"""
+    """SATURATION TEST FOR ALL BRANCHES"""
 
     U = 1.0/float(min(state_frequencies_vect)) - 1
-    K = number_rates - 1
-    number_standard_deviations = 2 #Confidence intervals of 95%
+    K = dimension - 1
+    number_standard_deviations = 2 #Confidence intervals of 98% (one sided)
 
 
     print("{:6s}  {:6s}  {:6s}  {:14s} {:14s} {:100s}".format("Order"," delta"," c_s","Branch status","T2T status", " Branch","\n"))
@@ -1140,7 +1153,10 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
                 results_file.write("\n\n\n")
                 results_file.write('{:6s}  {:6s}  {:6s}  {:14s} {:14s} {:100s}\n'.format("Order"," delta"," c_s","Branch status","T2T status"," Branch"))
         estimation_dt = np.sqrt(U*min(K,U/4)/number_sites)
-        upper_ci = number_standard_deviations*estimation_dt
+        if (not rawMemory):
+            upper_ci = number_standard_deviations*estimation_dt
+        else:
+            upper_ci = 0
 
         if multiplicity == 1: #if D=1
 
@@ -1160,15 +1176,16 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
             #print(np.multiply(a, b))
             if i<len(internal_nodes):
                 M_a = np.asarray(a)@np.asarray(a)/number_sites+upper_ci
+                M_a = min(1, M_a)
             else: #if clade A is a single leaf
                 M_a = 1
 
             M_b = np.asarray(b)@np.asarray(b)/number_sites+upper_ci
-
+            M_b = min(1, M_b)
             aux = M_a*M_b
             c_s = z_alpha*np.sqrt(aux)/np.sqrt(number_sites) #computing the saturation coherence
             c_sTwoSequence = z_alpha/np.sqrt(number_sites) #computing the saturation coherence between two sequences
-        else: #if D>1  NEEDS REVIEW
+        else:
             c_sTwoSequence = multiplicity*z_alpha/np.sqrt(number_sites) #computing the saturation coherence between two sequences
             delta = 0
 
@@ -1244,23 +1261,23 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
 if __name__ == '__main__':
     print("Hello! If you give me an alignment, I can check how saturated it is.\n"
           "I will divide the alignment into four regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma4 model.\n"
-          "Then I will consider the fastest evolving region.\n"
-          "For this region, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
+          "Then I will consider separate all sites depending on how fast they evolve.\n"
+          "For each of these regions, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
     #pathDATA = input("What is the path to the alignment?\n")
-    pathDATA = "/Users/cassius/Desktop/SIV_all_without_satute/civ.phy"
+    pathDATA = "/Users/cassius/Desktop/ejemploAnimales/example.phy"
     #pathIQTREE = input("What is the path to IQ-TREE?\n")
     pathIQTREE = "/Users/cassius/Desktop/iqtree2"
-    numberRates = 8
-    saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(8), 2.33, 1, 0.01)
+    numberRates = 1
     for i in range(numberRates):
+        print("Here comes the ", i+1, "'th fastest evolving region: ")
         if i==0:
-            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(i+1), 2.33, 1, 0.01)
+            saturationTest(pathDATA, pathIQTREE, True, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, False)
         else:
-            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(i+1), 2.33, 1, 0.01)
+            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, False)
     #saturationTest(pathDATA, pathIQTREE, False)
-    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01):
-    t,T =  read_tree(pathDATA,1)
-    print(t)
+    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = False)
+    #t,T =  read_tree(pathDATA,1)
+    #print(t)
     #print("\n\nFor better reference, this is the reconstructed tree topology :\n",T.copy("newick").get_ascii(attributes=["name","label","distance"]))
 
 
