@@ -1,3 +1,5 @@
+
+
 import numpy as np
 import regex as re
 import pandas as pd
@@ -875,6 +877,7 @@ def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
         modelFinal += "}"
 
     with open(path+".iqtree", "r") as f:
+        #FIX: Use split instead of character position, too delicate otherwise
         found = 0
         number_lines = 0
         frequencyString = ""
@@ -882,6 +885,9 @@ def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
             if "State frequencies:" in line:
                 found = 1
             if found and number_lines < dimension+2:
+                if "equal frequencies" in line:
+                    frequencyString = "0.25\n"*dimension
+                    break
                 if number_lines > 1:
                     frequencyString += line[10:]
                 number_lines+=1
@@ -905,33 +911,6 @@ def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
             f1.write(modelAndFrequency)
     return state_frequencies_vect
 
-##Obsolete, assumes 4 dimensions:
-def rate_and_frequencies(path,number_rates, dimension):
-
-    filne = path+".iqtree"
-    with open(filne, 'r+') as f:
-        lines = f.readlines()
-        for i in range(0, len(lines)):
-            line = lines[i]
-            if "Rate parameter R:" in line:
-                G = "{" + lines[i+2][7:-1] + "," + lines[i+3][7:-1] + "," + lines[i+4][7:-1] + "," + lines[i+5][7:-1] + "," + lines[i+6][7:-1] + "}"
-            if "State frequencies: (empirical counts from alignment)" in line:
-                F = "{" + lines[i+2][10:-1] + "," + lines[i+3][10:-1] + "," + lines[i+4][10:-1] + "," + lines[i+5][10:-1] + "}"
-                state_frequencies_vect = [lines[i+2][10:-1],lines[i+3][10:-1],lines[i+4][10:-1],lines[i+5][10:-1]]
-            elif "State frequencies: (equal frequencies)" in line:
-                F = "{0.25,0.25,0.25,0.25}"
-                state_frequencies_vect = [0.25,0.25,0.25,0.25]
-    pathFolder = remove_filename(path)
-    if number_rates==1:
-        f1 = open(pathFolder + "model.txt", "w")
-        f1.write("'GTR" + G + "+FU" + F + "'")
-    else:
-        for i in range(number_rates):
-            f1 = open(pathFolder + "subsequences/subseq" + str(i+1) + "/model.txt", "w")
-            f1.write("GTR" + G + "+FU" + F)
-
-    return state_frequencies_vect
-
 """## DIAGONALISATION OF THE RATE MATRIX
 
 """
@@ -948,11 +927,16 @@ def diagonalisation(n,path):
             line = lines[i]
             if "Rate matrix Q:" in line:
                 for j in range(n):
+                    listEntries = lines[i+j+2].split()
                     for k in range(n):
-                        ratematrix[j,k] = lines[i+2+j][3+k*10:13+k*10]
+                        if ('e' in listEntries[k+1]):
+                            ratematrix[j,k] = "0"
+                        else:
+                            ratematrix[j,k]= listEntries[k+1]
             if "State frequencies: (empirical counts from alignment)" in line:
                 for j in range(n):
-                    phimatrix[j,j] = lines[i+2+j][10:-1]
+                    entry = lines[i+j+2].split()
+                    phimatrix[j,j] = entry[2]
             elif "State frequencies: (equal frequencies)" in line:
                 for j in range(n):
                     phimatrix[j,j] = 0.25
@@ -999,7 +983,7 @@ def diagonalisation(n,path):
 
 
 
-def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = False):
+def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = True):
     """IQ-TREE"""
     if runIQTREE:
         modelRatesInv = "GTR+G"+str(number_rates)+"+I"
@@ -1120,7 +1104,7 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
                 T = Tree(t,format=newickformat)
 
                 results_file = open(pathFOLDER +"/resultsRate"+chosen_rate+".txt", "w") #To store test results. We open file in first iteration (branch).
-                results_file.write(T.copy("newick").get_ascii(attributes=["name","label","distance"]))
+                #results_file.write(T.copy("newick").get_ascii(attributes=["name","label","distance"]))
                 results_file.write("\n")
                 results_file.write('{:6s}  {:6s}  {:6s}  {:14s} {:14s} {:100s}'.format("Order"," delta"," c_s"," Branch status ", "T2T status", "Branch","\n"))
         else: #if gamma model
@@ -1156,7 +1140,7 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
         if (not rawMemory):
             upper_ci = number_standard_deviations*estimation_dt
         else:
-            upper_ci = 0
+            upper_ci = float(0)
 
         if multiplicity == 1: #if D=1
 
@@ -1259,25 +1243,23 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
 
 
 if __name__ == '__main__':
+
     print("Hello! If you give me an alignment, I can check how saturated it is.\n"
-          "I will divide the alignment into four regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma4 model.\n"
-          "Then I will consider separate all sites depending on how fast they evolve.\n"
+          "I will divide the alignment into regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma model.\n"
+          "Then I will separate all sites depending on how fast they evolve.\n"
           "For each of these regions, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
-    #pathDATA = input("What is the path to the alignment?\n")
-    pathDATA = "/Users/cassius/Desktop/ejemploAnimales/example.phy"
-    #pathIQTREE = input("What is the path to IQ-TREE?\n")
-    pathIQTREE = "/Users/cassius/Desktop/iqtree2"
-    numberRates = 1
+
+    pathDATA = input("What is the path to the alignment?\n")
+
+    pathIQTREE = input("What is the path to IQ-TREE?\n")
+
+    numberRates = int(input("How many rate categories do you want to use?\n"))
+
+    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = True)
     for i in range(numberRates):
         print("Here comes the ", i+1, "'th fastest evolving region: ")
         if i==0:
-            saturationTest(pathDATA, pathIQTREE, True, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, False)
+            saturationTest(pathDATA, pathIQTREE, True, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, True)
         else:
-            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, False)
-    #saturationTest(pathDATA, pathIQTREE, False)
-    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = False)
-    #t,T =  read_tree(pathDATA,1)
-    #print(t)
-    #print("\n\nFor better reference, this is the reconstructed tree topology :\n",T.copy("newick").get_ascii(attributes=["name","label","distance"]))
-
+            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, True)
 
