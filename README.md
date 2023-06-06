@@ -31,9 +31,17 @@ Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume 
 
 ------- Examples using the command line
 
-Minimal: Run IQ-TREE using ModelFinder, then apply Satute to the output
+--Minimal: Run IQ-TREE using ModelFinder, then apply Satute to the output. Assumes a 4-nucleotide alphabet.
 
-python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2 
+python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2
+
+-- Apply Satute to a previous -IQ-TREE output. Let us assume  a 20-letter alphabet.
+
+python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2 -noruniq -d 20
+
+--Fix number of rate categories: Run IQ-TREE using GTR+I+G, with user-set number of rate categories. Assumes a 4-nucleotide alphabet.
+
+python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2 -nrates 4
 
 
 
