@@ -10,8 +10,10 @@ import os
 import scipy
 import scipy.linalg
 import subprocess
+import argparse
 
 def remove_filename(path):
+    """Erase the file name on a path"""
     parts = path.split('/')
     nameFILE = parts[-1]
     parts.pop()
@@ -19,7 +21,7 @@ def remove_filename(path):
     return pathFOLDER
 
 def read_tree(path,newickformat):
-
+    """Read the tree from the IQ-TREE output. Output a slightly changed tree."""
     filne = path +".iqtree"
     with open(filne, 'r+') as f:
         lines = f.readlines()
@@ -79,7 +81,7 @@ def read_tree(path,newickformat):
 """## INTERNAL NODES AND LEAVES"""
 
 def node_type(T):
-
+    """Given the tree, output internal and external nodes separatedly."""
     leaves = []
     for i in T.get_leaves():
         leaves.append(i.name)
@@ -92,12 +94,10 @@ def node_type(T):
     return leaves,internal_nodes
 
 """## MODIFYING SEQUENCE FILE
-
-#### We modified the nodes names in order to have indistinguishable names. We need to modify as well the sequence file.
 """
 
 def modify_seqfile(path,leaves,option):
-
+    """Modify the node names to have indistinguishable names. Modify also the sequence file."""
     filesequence = path
 
     if option==1:
@@ -128,9 +128,9 @@ def modify_seqfile(path,leaves,option):
     else:
         print("FILE FORMAT OPTION NOT VALID")
 
-"""## COMPUTING BRANCHES LENGTHS """
 
 def branches_lengths(T):
+    """Given a tree, output a list of its branch lengths """
 
     vector_branches = []
     vector_distances = []
@@ -158,9 +158,9 @@ def branches_lengths(T):
 
     return vector_branches,vector_distances
 
-"""## NUMBER OF NODES AND SITES"""
 
 def number_nodes_sites(path):
+    """Given the path to the alignment file, output the number of tree nodes and alignment sites"""
     filne = path+".state"
     pathFolder = remove_filename(path)
     with open(filne, 'r+') as f:
@@ -178,10 +178,10 @@ def number_nodes_sites(path):
 
     return nodes_number,nucleotides_sites
 
-"""## MEMORY VECTOR"""
 
 def memory(path):
-
+    """CURRENTLY UNUSED:
+       Given the path to the alignment file, store the memory at each node."""
     filne = path+".state"
     pathFolder = remove_filename(path)
     with open(filne, 'r+') as f:
@@ -241,10 +241,8 @@ def memory(path):
 
     return minimum_memory
 
-"""## SEPARATING CLADES"""
-
 def clades(T,t,newickformat,internal_nodes,leaves):
-
+    """Given a tree, output a list that, for every branch, contains the split of the branch in Newick format"""
     root = T.get_tree_root()
 
     parent_nodes = []
@@ -435,10 +433,10 @@ def clades(T,t,newickformat,internal_nodes,leaves):
 
     return clades1,clades2
 
-"""## DIVIDING SEQUENCE FILE INTO SUBFILES DEPENDING ON WHICH RATE IS MOST PROBABLE"""
+
 
 def subsequences(T, path,epsilon,number_rates,option):
-
+    """Divide the alignment sites depending on which rate category is the most likely. Constructed as txt files. """
     filesequence = path+".txt"
 
     fileprob = path+".siteprob"
@@ -518,10 +516,9 @@ def subsequences(T, path,epsilon,number_rates,option):
 
     return numbersitesperrate
 
-"""## SAVING MUTATION RATES (in case of the Gamma model)"""
 
 def save_rates(path,number_rates):
-
+    """ Given the path to the alingment file, if different rate categories are used, save the rates output by IQ-TREE."""
     rates = []
     filne = path+".iqtree"
     with open(filne, 'r+') as f:
@@ -538,9 +535,9 @@ def save_rates(path,number_rates):
 
     return rates
 
-"""## MODIFY BRANCHES LENGTHS (if it corresponds), ADD FOO AND SAVE CLADES"""
 
 def save_clades(path,number_rates,clades1,clades2,newickformat,rates):
+    """If necesary, modify branch lengths. Add a FOO sequence (will be root in the future) and save the new clades"""
     pathFolder = remove_filename(path)
     if number_rates==1:
         for i in range(len(clades1)):
@@ -588,10 +585,10 @@ def save_clades(path,number_rates,clades1,clades2,newickformat,rates):
                 f2 = open(pathFolder + "subsequences/subseq" + str(j+1) + "/clades/Branch" + str(i) + "_clade2/tree.txt", "w")
                 f2.write(cl2)
 
-"""## MODIFYING BRANCHES LENGTHS IN FULL TREES"""
+
 
 def modify_fulltree(path,T,rates,newickformat):
-
+    """Multiply by the rates the branch lengths of the IQ-TREE reconstruction. """
     for j in range(rates):
         r = T.get_tree_root()
         for node in T.traverse("levelorder"):
@@ -602,11 +599,11 @@ def modify_fulltree(path,T,rates,newickformat):
         f = open(path + "subsequences/subseq" + str(j+1) + "/tree.txt", "w")
         f.write(t)
 
-"""## CREATING FOR EACH CLADE THE NUCLEOTIDE SEQUENCE FILE"""
+
 
 def sequences_clades(path,number_rates,nodes_number,nucleotides_sites,clades1,clades2,option,newickformat,internal_nodes,numbersitesperrate):
     pathFolder = remove_filename(path)
-
+    """For each clade, create its corresponding alginment file."""
     if number_rates==1:
         if option==1:
             filesequence = path+".txt"
@@ -854,9 +851,9 @@ def sequences_clades(path,number_rates,nodes_number,nucleotides_sites,clades1,cl
         else:
             print("FILE FORMAT OPTION NOT VALID")
 
-"""## RATE PARAMETER AND STATE FREQUENCIES (from the original reconstruction)"""
 
 def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
+    """ From the IQ-TREE reconstruction, obtain the rate matrix and the stationary distribution."""
 
     with open(path+".iqtree", "r") as f:
         found = 0
@@ -911,12 +908,26 @@ def rate_and_frequenciesALTERNATIVE(path,number_rates, dimension):
             f1.write(modelAndFrequency)
     return state_frequencies_vect
 
-"""## DIAGONALISATION OF THE RATE MATRIX
+def findNumberRates(path):
+    """In the IQ-TREE output, find the number of rates chosen by ModelFinder."""
+    with open(path+".iqtree", "r") as f:
+        for line in f:
+            if "Model of substitution:" in line:
+                words = line.split()
+                modelSeparated = words[3].split('+')
+                foundGamma = False
+                foundRate = False
+                candidates = [element for element in modelSeparated if (element[1:].isdigit() and (element[0] == 'R' or element[0] == 'G'))]
+    if len(candidates) ==1:
+        return int(candidates[0][1:])
+    elif len(candidates) == 0:
+        return 1
+    else:
+        return -1
 
-"""
 
 def diagonalisation(n,path):
-
+    """Diagonalize the rate matrix"""
     ratematrix = np.zeros((n,n))
     phimatrix = np.zeros((n,n))
 
@@ -981,11 +992,9 @@ def diagonalisation(n,path):
 
     return array_eigenvectors,multiplicity
 
-
-
-def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = True):
-    """IQ-TREE"""
-    if runIQTREE:
+def executeIQTREE(pathDATA, pathIQTREE, number_rates=4, modelFinder = False, runBOOTSRAP = False):
+    """Execute IQ-TREE with the options of the arguments."""
+    if (not modelFinder):
         modelRatesInv = "GTR+G"+str(number_rates)+"+I"
         modelHomo = "GTR"
         if runBOOTSRAP:
@@ -999,9 +1008,17 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
                 subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelRatesInv, "-asr", "-wspr", "-seed", "10", "-quiet"])
             else:
                 subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-m", modelHomo, "-asr", "-seed", "10", "-quiet"])
+    else:
+        if runBOOTSRAP:
+            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-asr", "-wspr", "-seed", "10", "-quiet", "-b", "100"])
+        else:
+            subprocess.run([pathIQTREE, "-redo", "-s", pathDATA, "-asr", "-wspr", "-seed", "10", "-quiet"])
 
-    """Check type if the alignment is Phylip or fasta format"""
 
+def saturationTest(pathDATA, pathIQTREE, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = True):
+    """Run the saturation test for each rate and branch of the reconstructed phylogeny"""
+
+    # Check type if the alignment is Phylip or fasta format
     option = 1 #If sequence file has phylip format
     # Check if otherwise we assume fasta file:
     with open(pathDATA, "r") as toData:
@@ -1160,18 +1177,19 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
             #print(np.multiply(a, b))
             if i<len(internal_nodes):
                 M_a = np.asarray(a)@np.asarray(a)/number_sites+upper_ci
-                M_a = min(1, M_a)
+                #M_a = min(1, M_a)
             else: #if clade A is a single leaf
                 M_a = 1
 
             M_b = np.asarray(b)@np.asarray(b)/number_sites+upper_ci
-            M_b = min(1, M_b)
+            #M_b = min(1, M_b)
             aux = M_a*M_b
-            c_s = z_alpha*np.sqrt(aux)/np.sqrt(number_sites) #computing the saturation coherence
-            c_sTwoSequence = z_alpha/np.sqrt(number_sites) #computing the saturation coherence between two sequences
+            c_s = z_alpha*np.sqrt(aux)/np.sqrt(number_sites) #saturation coherence
+            c_sTwoSequence = z_alpha/np.sqrt(number_sites) #saturation coherence between two sequences
         else:
-            c_sTwoSequence = multiplicity*z_alpha/np.sqrt(number_sites) #computing the saturation coherence between two sequences
+            c_sTwoSequence = multiplicity*z_alpha/np.sqrt(number_sites) #saturation coherence between two sequences
             delta = 0
+            M = 0
 
             for j in range(multiplicity):
 
@@ -1188,11 +1206,14 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
                     b.append(v1@np.asarray(df2.iloc[k,3:7]))
 
                 delta += np.asarray(a)@np.asarray(b)
+                M_a = np.asarray(a)@np.asarray(a)
+                M_b = np.asarray(b)@np.asarray(b)
+                M += M_a*M_b
 
             delta = delta/number_sites
+            M = M/(number_sites*number_sites)
 
             variance = 0
-
             for j in range(multiplicity):
                 for k in range(multiplicity):
 
@@ -1203,27 +1224,35 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
                     v_k = array_eigenvectors[k]
 
                     for l in range(number_sites*(number_nodes_1-1),number_sites*number_nodes_1):
-                        a.append(v_j@np.asarray(df1.iloc[l,3:7]))
+                        a.append((v_j@np.asarray(df1.iloc[l,3:7]))*(v_k@np.asarray(df1.iloc[l,3:7])))
 
                     for l in range(number_sites*(number_nodes_2-1),number_sites*number_nodes_2):
-                        b.append(v_k@np.asarray(df2.iloc[l,3:7]))
+                        b.append((v_j@np.asarray(df2.iloc[l,3:7]))*(v_k@np.asarray(df2.iloc[l,3:7]))  )
 
-                    #variance = np.asarray(a)@np.asarray(b)
-                    variance += max(np.asarray(a-upper_ci)@np.asarray(b-upper_ci),np.asarray(a+upper_ci)@np.asarray(b+upper_ci),np.asarray(a+upper_ci)@np.asarray(b-upper_ci),np.asarray(a-upper_ci)@np.asarray(b+upper_ci))
+                    #variance += np.asarray(a)@np.asarray(a)
+                    variance += sum(a)*sum(b)/(number_sites*number_sites)
+                    #variance += max(np.asarray(a)@np.asarray(b)+upper_ci,np.asarray(a+upper_ci)@np.asarray(b+upper_ci),np.asarray(a+upper_ci)@np.asarray(b-upper_ci),np.asarray(a-upper_ci)@np.asarray(b+upper_ci))
 
-            variance = variance/(number_sites*number_sites)
-
-            if variance<0:
-                print("VARIANCE ESTIMATION IS NEGATIVE - CONSIDER INCREASING THE NUMBER OF STANDARD DEVIATIONS (number_standard_deviations) (CONFIDENCE INTERVAL)")
-                c_s = 999999999
+            #if variance < 0:
+            #    print("The nodes of this branch are saturated.")
+            #    c_s = -1
+            if M < c_sTwoSequence*c_sTwoSequence:
+                print("The nodes of this branch are saturated.")
+                print(M)
+                print(variance)
+                print(c_sTwoSequence*c_sTwoSequence)
+                c_s = z_alpha*np.sqrt(M_a*M_b/number_sites)
             else:
-                c_s = z_alpha*np.sqrt(variance)
+                print(M)
+                print(variance)
+                print(c_sTwoSequence*c_sTwoSequence)
+                c_s = z_alpha*np.sqrt(M_a*M_b/number_sites)
 
 
-        if c_s>delta:
+        if c_s>delta or M < c_sTwoSequence*c_sTwoSequence:
             result_test = "Saturated"
         else:
-            result_test = "Informative"
+            result_test = "Unsaturated"
 
         if c_sTwoSequence>delta:
             result_test_tip2tip = "SatuT2T"
@@ -1244,22 +1273,65 @@ def saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, d
 
 if __name__ == '__main__':
 
-    print("Hello! If you give me an alignment, I can check how saturated it is.\n"
-          "I will divide the alignment into regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma model.\n"
-          "Then I will separate all sites depending on how fast they evolve.\n"
-          "For each of these regions, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
+    """Parsing arguments"""
 
-    pathDATA = input("What is the path to the alignment?\n")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--sample", dest="filename", required=True,
+                        help="Input file.", metavar="FILE")
+    parser.add_argument("-iq", "--iqtreeAddress", dest="iqtreeaddress", required=True,
+                        help="Address of IQ-TREE", metavar="IQTREEADDRESS")
+    parser.add_argument("-nrates", "--numberofrates", dest="rates", required=False, type=int,
+                        help="Number of rate categories set by user. Ignored if -noruniq. ", metavar="NUMBEROFRATES", default = -1)
+    parser.add_argument("-noruniq", "--doNotRunIQTREE", dest="noruniq", required=False,
+                        help="Option to avoid the initial IQ-TREE run.", action = 'store_false')
+    parser.add_argument("-runboot", "--runBootstrap", dest="runboot", required=False,
+                        help="Option to run the bootstrap in the initial IQ-TREE run.", action = 'store_true')
+    parser.add_argument("-upperestimate", "--upperestimate", dest="upperestimate", required=False,
+                        help="Option to get upper estimates of the memory .", action = 'store_true')
+    parser.add_argument("-modelfinder", "--runmodelfinder", dest="modelfinder", required=False,
+                        help="Option to run modelfinder in the initial IQ-TREE run.", action = 'store_true')
+    parser.add_argument("-d", "--dimension", dest="dimension", required=False, type=int, default = 4,
+                        help="Size of the alphabet. Assumed 4.", metavar="RUNBOOTSTRAP")
+    parser.add_argument("-c", "--chosenrate", dest="chosenrate", required=False, type=int, default = -1,
+                        help="Chosen rate category to test for saturation, where 1 is the slowest. Assumed -1, meaning all.", metavar="CHOSENRATE")
+    args = parser.parse_args()
+    pathDATA = args.filename
+    pathIQTREE = args.iqtreeaddress
+    runIQTREE = args.noruniq
+    runBOOTSTRAP = args.runboot
+    dimension = args.dimension
+    chosenRate = args.chosenrate
+    numberRates = args.rates
+    modelFinder = args.modelfinder
+    upperestimate = args.upperestimate
 
-    pathIQTREE = input("What is the path to IQ-TREE?\n")
+    #print("Hello! If you give me an alignment, I can check how saturated it is.\n"
+    #      "I will divide the alignment into regions using IQ-TREE to reconstruct the phylogeny assuming the GTR+I+Gamma model.\n"
+    #      "Then I will separate all sites depending on how fast they evolve.\n"
+    #      "For each of these regions, in the reconstructed phylogeny we will test for branch saturation and tip-to-tip (T2T) saturation.\n")
 
-    numberRates = int(input("How many rate categories do you want to use?\n"))
+    #pathDATA = input("What is the path to the alignment?\n")
+    #pathDATA = "/Users/cassius/Desktop/cobaya/alignment.phy"
 
-    # saturationTest(pathDATA, pathIQTREE, runIQTREE = True, runBOOTSRAP = True, dimension = 4, number_rates = 4, chosen_rate = str(4), z_alpha = 2.33, newickformat = 1, epsilon = 0.01, rawMemory = True)
-    for i in range(numberRates):
-        print("Here comes the ", i+1, "'th fastest evolving region: ")
-        if i==0:
-            saturationTest(pathDATA, pathIQTREE, True, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, True)
-        else:
-            saturationTest(pathDATA, pathIQTREE, False, False, 4, numberRates, str(numberRates-i), 2.33, 1, 0.01, True)
+    #pathIQTREE = input("What is the path to IQ-TREE?\n")
+    #pathIQTREE = "/Users/cassius/Desktop/iqtree2"
+
+    #numberRates = int(input("How many rate categories do you want to use?\n"))
+
+    if numberRates <= 0 or modelFinder:
+        executeIQTREE(pathDATA, pathIQTREE,numberRates, True, runBOOTSTRAP)
+        numberRates = findNumberRates(pathDATA)
+
+    else:
+        if runIQTREE: executeIQTREE(pathDATA, pathIQTREE,numberRates, modelFinder, runBOOTSTRAP)
+
+
+    if chosenRate < 0:
+        for i in range(numberRates):
+            print("Here comes the ", i+1, "'th fastest evolving region: ")
+            saturationTest(pathDATA, pathIQTREE, dimension, numberRates, str(numberRates-i), 2.33, 1, 0.01, not upperestimate)
+
+    else:
+        print("Here comes the ", numberRates-chosenRate+1, "'th fastest evolving region: ")
+        saturationTest(pathDATA, pathIQTREE, dimension, numberRates, str(chosenRate), 2.33, 1, 0.01, not upperestimate)
 
