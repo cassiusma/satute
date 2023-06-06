@@ -17,11 +17,14 @@ The final output is a results file listing, for every branch, its saturation sta
 The statistic we use to test for branch saturation is the coherence of the branch, which has a value typically between 0 (saturated) and 1 (unsaturated).
 
 ---- Examples
+
 You will need:
 
-An alignment file alignment.phy for satute, with path e.g. /path/alignment.py
-IQ-TREE installed, whose executable has path e.g. /path/iqtree2    
-Donwloading this project, installing the requirements.txt into your python3 
+--An alignment file alignment.phy for satute, with path e.g. /path/alignment.py
+
+--IQ-TREE installed, whose executable has path e.g. /path/iqtree2
+
+--Donwloading this project, installing the modules of the requirements.txt into your python3.
 
 Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume you added no prefix nor suffix to the IQ-TREE output files.
 
