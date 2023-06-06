@@ -35,7 +35,7 @@ Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume 
 
 python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2
 
--- Apply Satute to a previous -IQ-TREE output. Let us assume  a 20-letter alphabet.
+-- Apply Satute to a previous -IQ-TREE output. Let us use a 20-letter alphabet.
 
 python3 /path/main.py -s /path/alignment.phy -iq /path/iqtree2 -noruniq -d 20
 
