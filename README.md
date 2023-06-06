@@ -3,7 +3,8 @@
 ---- What is Satute?
 
 Satute is a Python module to test for branch saturation in a phylogeny. In most of cases, a branch is saturated if it is too long, although sometimes the cause is more technical than just branch length.
-Importantly, Satute is highly dependent on IQ-TREE (http://www.iqtree.org), which we assumed the user has installed. Let us explain the workflow of Satute.
+
+Importantly, Satute is highly dependent on IQ-TREE (http://www.iqtree.org), which we assume the user has installed.
 
 ---- Workflow of Satute (see the image attached)
 
