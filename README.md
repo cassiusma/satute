@@ -10,7 +10,7 @@ Importantly, Satute is highly dependent on IQ-TREE (http://www.iqtree.org), whic
 
 [workflow.pdf](https://github.com/cassiusma/satute/files/11662009/workflow.pdf)
 
-The minimum input required to run Satute is an alignment file in phylip or fasta format. IQ-TREE reconstructs an evolutionary tree and then Satute will tell us, for every branch of this tree, whether this branch is saturated or not. If there are different evolutionary speeds (e.g. due to the Gamma model), then we need to separate the alignment sites into the categories that likely generated them.
+The minimum input required to run Satute is an alignment file in phylip or fasta format. IQ-TREE reconstructs an evolutionary tree and then Satute will tell us, for every branch of this tree, whether this branch is saturated or not. If there are different evolutionary speeds (e.g. due to the Gamma model), then Satute will separate the alignment sites into the categories that likely generated them.
 
 The final output is a results file listing, for every branch, its saturation status. If there are different categories, then one results file is output for each category.
 
