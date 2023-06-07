@@ -24,7 +24,7 @@ You will need:
 
 --IQ-TREE installed, whose executable has path e.g. /path/iqtree2
 
---The main of this project, with path e.g. /path/main.py.  Installing the modules of the requirements.txt into your python3.
+--The main of this project, with path e.g. /path/main.py.  Install the modules of the requirements.txt into your python3.
 
 Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume you added no prefix nor suffix to the IQ-TREE output files.
 
