@@ -26,7 +26,7 @@ You will need:
 
 --The main of this project, with path e.g. /path/main.py.  Install the modules of the requirements.txt into your python3.
 
-Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume you added no prefix nor suffix to the IQ-TREE output files.
+Having run IQ-TREE before running Satute is optional. BUT IMPORTANTLY: I assume you added no prefix nor suffix to the IQ-TREE output files, as also that the IQ-TREE output is in the same folder as alignment.phy
 
 
 ------- Examples using the command line
