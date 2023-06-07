@@ -12,7 +12,7 @@ Importantly, Satute is highly dependent on IQ-TREE (http://www.iqtree.org), whic
 
 The minimum input required to run Satute is an alignment file in phylip or fasta format. IQ-TREE reconstructs an evolutionary tree and then Satute will tell us, for every branch of this tree, whether this branch is saturated or not. If the sites have different evolutionary speeds (e.g. due to the Gamma model), then Satute will separate the alignment sites into the rate categories that likely generated them.
 
-The final output is a results file listing, for every branch, its saturation status. If there are different rate categories, then one results file is output for each category.
+The final output is a result file listing, for every branch, its saturation status. If there are different rate categories, then one result file is generated for each category.
 
 The statistic we use to test for branch saturation is the coherence of the branch, which has a value typically between 0 (saturated) and 1 (unsaturated).
 
